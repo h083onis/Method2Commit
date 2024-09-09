@@ -37,12 +37,13 @@ def get_ch_line_num(command):
 def get_ch_method(method_list, ch_num_line):
     ch_method_name_set = set()
     extracted_list = []
+    # print(method_list)
     for ch_line_num in ch_num_line:
         for i, method in enumerate(method_list):
             if i in extracted_list:
                 continue
             if int(method['position'][0][0])+1 <= int(ch_line_num) \
-                and int(method['position'][1][0])+1 >= int(ch_line_num):
+                and int(method['position'][1][0]) >= int(ch_line_num):
                 ch_method_name_set.add(method['class_name']+'\t'+method['method_name'])
                 extracted_list.append(i)
                 break
@@ -70,7 +71,9 @@ def extract_pair_ch_method(before_file_path, after_file_path, ch_num_line):
         class_method_name = ch_class_method_name.split('\t')
         before_method = look_up_method(class_method_name, before_method_list)
         after_method = look_up_method(class_method_name, after_method_list)
-        if before_method == None or after_method == None:
+        print(before_method['content'])
+        print(after_method['content'])
+        if before_method == None or after_method == None or before_method['content'] == after_method['content']:
             continue
         ch_method_pair['class_name'] = class_method_name[0]
         ch_method_pair['method_name'] = class_method_name[1]
@@ -105,6 +108,8 @@ def pipe_process(repo, commit, hexsha, params, commit_dict):
         if len(codes_dict['ch_method_pairs']) == 0:
             continue
         commit_dict['codes'].append(codes_dict)
+        # if item.a_path == "camel-core/src/main/java/org/apache/camel/builder/PredicateBuilder.java":
+        #     break
         
 
 #処理の実行
@@ -121,6 +126,8 @@ def excute(params):
     st = time.time()
     # 変更の対象ファイルをM,Rとする
     for i, item in enumerate(commits):
+        if item.hexsha != "3a5cea7c053dd9bceec508be897301a7ae449f18":
+            continue
         print(str(i)+'/'+str(len(commits)))
         print(item.hexsha)
         commit_dict = {}
@@ -131,9 +138,13 @@ def excute(params):
         try:
             commit = repo.commit(item.hexsha+'~1')
             pipe_process(repo, commit, item.hexsha, params, commit_dict)
+            if len(commit_dict['codes']) == 0:
+                continue
             commit_list.append(commit_dict)
         except BadName:
             continue
+        if item.hexsha == "3a5cea7c053dd9bceec508be897301a7ae449f18":
+            break
     
     with open(params.json_name, 'w') as f:
         json.dump(commit_list, f, indent=2)
@@ -142,8 +153,8 @@ def excute(params):
 #引数設定
 def read_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-project', type=str, default='camel')
-    parser.add_argument('-json_name', type=str, default='camel.json')
+    parser.add_argument('-project', type=str, default='../../../sample_data/camel')
+    parser.add_argument('-json_name', type=str, default='camel4.json')
     parser.add_argument('-auth_ext', type=str, default='java')
     return parser
 
